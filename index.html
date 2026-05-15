@@ -117,7 +117,7 @@ tbody tr.total-row td{color:var(--text);font-weight:700;background:var(--primary
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg2)}
 ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
-
+ 
 /* ── TEAM EDITOR ───────────────────────────────── */
 .team-editor-overlay{position:fixed;inset:0;background:rgba(26,29,35,.5);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
 .team-editor{background:#fff;border-radius:14px;width:100%;max-width:720px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
@@ -136,6 +136,8 @@ tbody tr.total-row td{color:var(--text);font-weight:700;background:var(--primary
 .m-chip:hover{box-shadow:0 2px 6px rgba(0,0,0,.1)}
 .m-chip.dragging{opacity:.4}
 .m-chip-avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+.tgt-input{width:48px;font-size:10px;font-family:var(--sans);border:1px solid var(--line2);border-radius:4px;padding:2px 4px;color:var(--text2);background:#fff;margin-left:2px;outline:none}
+.tgt-input:focus{border-color:var(--primary)}
 /* team slots */
 .te-teams{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .te-team-slot{border:1.5px solid var(--line2);border-radius:10px;overflow:hidden}
@@ -219,17 +221,17 @@ tbody tr.total-row td{color:var(--text);font-weight:700;background:var(--primary
   </div>
   <button class="apply-btn" onclick="renderDashboard()">表示を更新</button>
 </aside>
-
+ 
 <main class="main">
   <div id="emptyState" class="empty">
-    <div class="empty-icon">📊</div>
-    <div class="empty-title">データを取得してください</div>
-    <div class="empty-text">左パネルの「データを更新」ボタンを押すと、Googleスプレッドシートから最新データを取得してダッシュボードを表示します。<br><br>※スプレッドシートが「リンクを知っている全員が閲覧可能」に設定されている必要があります。</div>
+    <div class="empty-icon">📋</div>
+    <div class="empty-title">フォーム回答待ち</div>
+    <div class="empty-text">Googleスプレッドシートへの接続は成功しています。<br>メンバーがフォームに回答すると、「データを更新」ボタンを押すだけでここに表示されます。</div>
   </div>
   <div id="dashboardContent" style="display:none"></div>
 </main>
 </div>
-
+ 
 <!-- TEAM EDITOR MODAL -->
 <div class="team-editor-overlay" id="editorOverlay" style="display:none" onclick="if(event.target===this)closeEditor()">
   <div class="team-editor">
@@ -238,7 +240,7 @@ tbody tr.total-row td{color:var(--text);font-weight:700;background:var(--primary
       <button class="te-close" onclick="closeEditor()">✕</button>
     </div>
     <div class="te-body">
-      <div class="te-hint">メンバーをドラッグ＆ドロップでチームに割り当てられます。チーム名はクリックして編集できます。チーム編成を変更しても元データは保持されます。</div>
+      <div class="te-hint">メンバーをドラッグ＆ドロップでチームに割り当てられます。チーム名はクリックして編集できます。各メンバーの右側の数値欄で<b>月次アポ目標</b>を設定できます。</div>
       <div>
         <div class="te-pool-label">未割り当てメンバー</div>
         <div class="te-pool" id="unassignedPool" ondragover="onDragOver(event,null)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,null)"></div>
@@ -255,26 +257,45 @@ tbody tr.total-row td{color:var(--text);font-weight:700;background:var(--primary
     </div>
   </div>
 </div>
-
+ 
 <script>
 // ── STATE ────────────────────────────────────────────────
 const state={
-  members:{},           // name -> records[]
-  teams:{},             // teamId -> {name, color, members:[]}
-  memberTeam:{},        // memberName -> teamId | null
+  members:{},
+  // 初期チーム編成（画像より）
+  teams:{
+    'team_chikano':{name:'近野チーム',color:'#40b680'},
+    'team_matsumoto':{name:'松本チーム',color:'#0080EE'},
+  },
+  memberTeam:{
+    '近野':'team_chikano','橋爪':'team_chikano','中井':'team_chikano',
+    '山口':'team_chikano','小谷':'team_chikano','大澤':'team_chikano',
+    '神元':'team_chikano','宮':'team_chikano','渡辺':'team_chikano',
+    '松本':'team_matsumoto','中尾':'team_matsumoto','峰尾':'team_matsumoto',
+    '野村':'team_matsumoto','金子':'team_matsumoto','中西':'team_matsumoto',
+    '小山':'team_matsumoto','安保':'team_matsumoto','坂上':'team_matsumoto',
+    '堤':'team_matsumoto',
+  },
+  // 個人アポ月次目標（括弧内の数値）
+  memberApoTarget:{
+    '近野':2,'橋爪':3.5,'中井':1,'山口':1,'小谷':1,
+    '大澤':0.5,'神元':0.5,'宮':0.5,'渡辺':0,
+    '松本':2,'中尾':2,'峰尾':1,'野村':1,'金子':1,
+    '中西':1,'小山':0.5,'安保':1,'坂上':1,'堤':0.5,
+  },
   period:'daily',
   viewMode:'individual',
   activeMember:null,
   activeTeamTab:null,
 };
-
+ 
 // team colors palette
 const TEAM_COLORS=['#40b680','#0080EE','#FFAA00','#e05050','#9b59b6','#e67e22','#1abc9c','#e91e8c'];
-
+ 
 // ── GOOGLE SHEETS CONFIG ─────────────────────────────────
 // GASプロキシ経由でCORSを回避
 const CSV_URL='https://script.google.com/macros/s/AKfycbxSbSHNyXtoZnTwJKnRdOgCg6Uvkx7s53jRK6Psdg6XjpuTLX8XBLBidHVBCSor4Ohd/exec';
-
+ 
 // ── FETCH FROM SHEETS ─────────────────────────────────────
 async function fetchSheetData(){
   const btn=document.getElementById('fetchBtn');
@@ -290,17 +311,17 @@ async function fetchSheetData(){
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const text=await res.text();
     const parsed=parseFormCSV(text);
-    if(!parsed||Object.keys(parsed).length===0) throw new Error('データが見つかりませんでした');
-    // merge into state
+    // ヘッダーのみ・回答0件でも正常とみなす
     Object.entries(parsed).forEach(([name,records])=>{
       state.members[name]=records;
-      if(!state.memberTeam[name]) state.memberTeam[name]=null;
+      // 既定チーム割当がなければnullで初期化（エディタで後から設定可能）
+      if(state.memberTeam[name]===undefined) state.memberTeam[name]=null;
     });
     if(!state.activeMember) state.activeMember=Object.keys(state.members)[0];
     const total=Object.values(state.members).flat().length;
     const names=Object.keys(state.members).length;
     statusEl.className='fetch-status ok';
-    statusTxt.textContent=`${names}名・${total}件 取得完了`;
+    statusTxt.textContent=names>0?`${names}名・${total}件 取得完了`:'接続OK・回答待ち';
     updateTeamSummary();
     sdr();
     renderDashboard();
@@ -315,7 +336,7 @@ async function fetchSheetData(){
     icon.textContent='↻';
   }
 }
-
+ 
 // ── FORM RESPONSE CSV PARSER ──────────────────────────────
 // 列: タイムスタンプ, 報告日, 報告者名, テレアポ稼働時間,
 //     テレアポ以外の稼働時間, テレアポ以外の活動内容,
@@ -356,7 +377,7 @@ function parseFormCSV(text){
   Object.values(memberMap).forEach(arr=>arr.sort((a,b)=>a.date-b.date));
   return memberMap;
 }
-
+ 
 function parseCSVLine(line){const res=[];let cur='';let q=false;for(const c of line){if(c==='"'){q=!q;}else if(c===','&&!q){res.push(cur.trim());cur='';}else cur+=c;}res.push(cur.trim());return res;}
 function parseDate(s){
   s=s.trim();
@@ -370,7 +391,7 @@ function fdi(d){return d.toISOString().slice(0,10);}
 function fd(d){return`${d.getMonth()+1}/${d.getDate()}`;}
 function fw(d){const s=new Date(d);s.setDate(s.getDate()-s.getDay()+1);return`${s.getMonth()+1}/${s.getDate()}週`;}
 function fm(d){return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}`;}
-
+ 
 function uc(){
   updateTeamSummary();
 }
@@ -379,7 +400,7 @@ function sdr(){
   document.getElementById('dateFrom').value=fdi(new Date(Math.min(...all)));
   document.getElementById('dateTo').value=fdi(new Date(Math.max(...all)));
 }
-
+ 
 // ── TEAM SUMMARY (sidebar) ───────────────────────────────
 function updateTeamSummary(){
   const el=document.getElementById('teamSummary');
@@ -391,7 +412,7 @@ function updateTeamSummary(){
     return`<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px"><span style="width:8px;height:8px;border-radius:50%;background:${t.color};flex-shrink:0"></span><span style="font-weight:700;color:var(--text2)">${t.name}</span><span style="color:var(--text3)">${ms.length}名</span></div>`;
   }).join('');
 }
-
+ 
 // ── PILLS ────────────────────────────────────────────────
 document.querySelectorAll('#periodPills .pill').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#periodPills .pill').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.period=b.dataset.period;}));
 document.querySelectorAll('#viewModePills .pill').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#viewModePills .pill').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.viewMode=b.dataset.view;}));
@@ -403,7 +424,7 @@ document.querySelectorAll('#quickRangePills .pill').forEach(b=>b.addEventListene
   else{const fd2=new Date(mx);fd2.setDate(fd2.getDate()-(+b.dataset.range)+1);document.getElementById('dateFrom').value=fdi(fd2);}
   document.getElementById('dateTo').value=fdi(mx);
 }));
-
+ 
 // ── DATA ─────────────────────────────────────────────────
 function gfr(m){
   const from=new Date(document.getElementById('dateFrom').value||'2000-01-01');
@@ -443,10 +464,18 @@ function ss(records){
 function ssTeam(tid){
   const ms=Object.entries(state.memberTeam).filter(([,v])=>v===tid).map(([k])=>k);
   const allRecs=ms.flatMap(m=>gfr(m));
-  return{...ss(allRecs),memberCount:ms.length,members:ms};
+  const teamApoTarget=ms.reduce((sum,m)=>sum+(state.memberApoTarget[m]||0),0);
+  return{...ss(allRecs),memberCount:ms.length,members:ms,teamApoTarget};
 }
 function memberInitial(name){return(name||'?').slice(0,1);}
-
+// アポ目標達成率バッジ
+function apoTargetBadge(apos,target){
+  if(!target) return '';
+  const pct=Math.round(apos/target*100);
+  const cls=pct>=100?'ok':pct>=50?'warn':'bad';
+  return `<span class="${cls}" style="font-size:10px;margin-left:4px">目標${target}件 ${pct}%</span>`;
+}
+ 
 // ── CHARTS ───────────────────────────────────────────────
 const ci={};
 function mc(id,cfg){if(ci[id]) ci[id].destroy();const c=document.getElementById(id);if(!c) return;ci[id]=new Chart(c,cfg);}
@@ -459,7 +488,7 @@ const BO={
   }
 };
 const SC={x:{ticks:{color:'#8a90a0',font:{family:'Meiryo,sans-serif',size:10}},grid:{color:'rgba(226,228,232,0.7)'},border:{display:false}},y:{ticks:{color:'#8a90a0',font:{family:'Meiryo,sans-serif',size:10}},grid:{color:'rgba(226,228,232,0.7)'},border:{display:false}}};
-
+ 
 // ── RENDER ───────────────────────────────────────────────
 function renderDashboard(){
   const ms=Object.keys(state.members);
@@ -472,7 +501,7 @@ function renderDashboard(){
   else if(vm==='teamgroup') rg();
   else rc();
 }
-
+ 
 // ── INDIVIDUAL ───────────────────────────────────────────
 function ri(){
   const ms=Object.keys(state.members);
@@ -494,7 +523,7 @@ function ri(){
   <div class="kpi-row">
     <div class="kpi-card c-primary"><div class="kpi-label">架電数</div><div class="kpi-value">${s.calls.toLocaleString()}</div><div class="kpi-meta">稼働 ${s.hours}h / ${s.days}日</div></div>
     <div class="kpi-card c-blue"><div class="kpi-label">接続数</div><div class="kpi-value">${s.contacts}</div><div class="kpi-meta">社長 ${s.ceoC} / 責任者 ${s.mgrC}</div></div>
-    <div class="kpi-card c-teal"><div class="kpi-label">アポ獲得数</div><div class="kpi-value">${s.apos}</div><div class="kpi-meta">社長 ${s.ceoA} / 責任者 ${s.mgrA}</div></div>
+    <div class="kpi-card c-teal"><div class="kpi-label">アポ獲得数</div><div class="kpi-value">${s.apos}</div><div class="kpi-meta">社長 ${s.ceoA} / 責任者 ${s.mgrA}${apoTargetBadge(s.apos,state.memberApoTarget[state.activeMember])}</div></div>
     <div class="kpi-card c-amber"><div class="kpi-label">架電数 / h</div><div class="kpi-value">${s.callsPerHour.toFixed(1)}</div><div class="kpi-meta"><span class="${s.callsPerHour>=20?'ok':s.callsPerHour>=15?'warn':'bad'}">目標 20件/h</span></div></div>
     <div class="kpi-card c-primary"><div class="kpi-label">全体接触率</div><div class="kpi-value">${s.contactRate.toFixed(1)}<span style="font-size:15px">%</span></div><div class="kpi-meta">接続 ÷ 架電</div></div>
     <div class="kpi-card c-blue"><div class="kpi-label">Call → アポ率</div><div class="kpi-value">${s.callApoRate.toFixed(2)}<span style="font-size:15px">%</span></div><div class="kpi-meta">アポ ÷ 架電</div></div>
@@ -521,7 +550,7 @@ function ri(){
   mc('c2',{type:'line',data:{labels:lb,datasets:[{data:bk.map(b=>b.contactRate),borderColor:'#00C093',backgroundColor:'rgba(0,192,147,.12)',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#00C093'}]},options:{...JSON.parse(JSON.stringify(BO)),plugins:{...BO.plugins,tooltip:{...BO.plugins.tooltip,callbacks:{label:c=>`${c.parsed.y.toFixed(1)}%`}}}}});
   mc('c3',{type:'line',data:{labels:lb,datasets:[{data:bk.map(b=>b.callsPerHour),borderColor:'#FFAA00',backgroundColor:'rgba(255,170,0,.12)',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#FFAA00'},{data:bk.map(()=>20),borderColor:'rgba(224,80,80,0.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0}]},options:JSON.parse(JSON.stringify(BO))});
 }
-
+ 
 // ── TEAM WHOLE ───────────────────────────────────────────
 function rt(){
   const ms=Object.keys(state.members),as=ms.map(m=>({name:m,...ss(gfr(m))}));
@@ -553,16 +582,19 @@ function rt(){
   </div>
   <div class="section-head">メンバー別実績</div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>メンバー</th><th>チーム</th><th>稼働日</th><th>架電数</th><th>架電/稼働日</th><th>接続数</th><th>アポ数</th><th>アポ/稼働日</th><th>接触率</th><th>Call→アポ率</th><th>架電/h</th></tr></thead>
+    <thead><tr><th>メンバー</th><th>チーム</th><th>稼働日</th><th>架電数</th><th>架電/稼働日</th><th>接続数</th><th>アポ数</th><th>月次目標</th><th>達成率</th><th>アポ/稼働日</th><th>接触率</th><th>Call→アポ率</th><th>架電/h</th></tr></thead>
     <tbody>${as.sort((a,b)=>b.apos-a.apos).map(s=>{
       const tid=state.memberTeam[s.name];const t=tid&&state.teams[tid]?state.teams[tid]:null;
       const tb=t?`<span class="team-badge" style="background:${t.color}22;color:${t.color}">${t.name}</span>`:'<span style="color:var(--text3);font-size:11px">―</span>';
-      return`<tr><td style="font-weight:700;color:var(--text)">${s.name}</td><td>${tb}</td><td>${s.days}</td><td><div class="pbar"><div class="pbar-track"><div class="pbar-fill" style="width:${Math.round(s.calls/mx*100)}%;background:#40b680"></div></div><span style="font-size:11px;font-weight:700;color:var(--primary-dark);min-width:36px;text-align:right">${s.calls.toLocaleString()}</span></div></td><td style="font-weight:700;color:var(--primary)">${s.callsPerDay.toFixed(1)}</td><td>${s.contacts}</td><td style="font-weight:700;color:var(--teal)">${s.apos}</td><td style="font-weight:700;color:var(--teal)">${s.aposPerDay.toFixed(2)}</td><td><span class="${s.contactRate>=8?'ok':s.contactRate>=5?'warn':'bad'}">${s.contactRate.toFixed(1)}%</span></td><td><span class="${s.callApoRate>=0.5?'ok':s.callApoRate>=0.2?'warn':'bad'}">${s.callApoRate.toFixed(2)}%</span></td><td><span class="${s.callsPerHour>=20?'ok':s.callsPerHour>=15?'warn':'bad'}">${s.callsPerHour.toFixed(1)}</span></td></tr>`;
+      const tgt=state.memberApoTarget[s.name]||0;
+      const pct=tgt>0?Math.round(s.apos/tgt*100):null;
+      const pctHtml=pct!==null?`<span class="${pct>=100?'ok':pct>=50?'warn':'bad'}">${pct}%</span>`:'―';
+      return`<tr><td style="font-weight:700;color:var(--text)">${s.name}</td><td>${tb}</td><td>${s.days}</td><td><div class="pbar"><div class="pbar-track"><div class="pbar-fill" style="width:${Math.round(s.calls/mx*100)}%;background:#40b680"></div></div><span style="font-size:11px;font-weight:700;color:var(--primary-dark);min-width:36px;text-align:right">${s.calls.toLocaleString()}</span></div></td><td style="font-weight:700;color:var(--primary)">${s.callsPerDay.toFixed(1)}</td><td>${s.contacts}</td><td style="font-weight:700;color:var(--teal)">${s.apos}</td><td style="color:var(--text3)">${tgt||'―'}</td><td>${pctHtml}</td><td style="font-weight:700;color:var(--teal)">${s.aposPerDay.toFixed(2)}</td><td><span class="${s.contactRate>=8?'ok':s.contactRate>=5?'warn':'bad'}">${s.contactRate.toFixed(1)}%</span></td><td><span class="${s.callApoRate>=0.5?'ok':s.callApoRate>=0.2?'warn':'bad'}">${s.callApoRate.toFixed(2)}%</span></td><td><span class="${s.callsPerHour>=20?'ok':s.callsPerHour>=15?'warn':'bad'}">${s.callsPerHour.toFixed(1)}</span></td></tr>`;
     }).join('')}</tbody>
   </table></div>`;
   mc('tc',{data:{labels:tb.map(b=>b.label),datasets:[{type:'bar',data:tb.map(b=>b.calls),backgroundColor:'rgba(64,182,128,0.55)',borderRadius:4,yAxisID:'y',order:2},{type:'line',data:tb.map(b=>b.apos),borderColor:'#0080EE',backgroundColor:'#0080EE',pointBackgroundColor:'#0080EE',borderWidth:2.5,pointRadius:5,tension:.3,yAxisID:'y2',order:1}]},options:{...JSON.parse(JSON.stringify(BO)),scales:{...SC,y2:{position:'right',ticks:{color:'#0080EE',font:{family:'Meiryo,sans-serif',size:10}},grid:{drawOnChartArea:false},border:{display:false},min:0}}}});
 }
-
+ 
 // ── TEAM GROUP VIEW ──────────────────────────────────────
 function rg(){
   const tids=Object.keys(state.teams);
@@ -576,16 +608,16 @@ function rg(){
     const t=state.teams[tid];
     return`<button class="team-tab${tid===state.activeTeamTab?' active':''}" onclick="setTeamTab('${tid}')" style="${tid===state.activeTeamTab?`border-color:${t.color};background:${t.color}18`:''}""><span class="team-tab-dot" style="background:${t.color}"></span>${t.name}</button>`;
   }).join('');
-
+ 
   const ts=ssTeam(state.activeTeamTab);
   const t=state.teams[state.activeTeamTab];
   const memberStats=ts.members.map(m=>({name:m,...ss(gfr(m))}));
   const mx=Math.max(...memberStats.map(s=>s.calls),1);
-
+ 
   // team comparison KPIs
   const allTeamStats=tids.map(tid=>({tid,...ssTeam(tid),team:state.teams[tid]}));
   const maxCalls=Math.max(...allTeamStats.map(s=>s.calls),1);
-
+ 
   document.getElementById('dashboardContent').innerHTML=`
   <div class="page-header">
     <div><div class="page-title">チーム別比較</div><div class="page-sub">${df} 〜 ${dt}</div></div>
@@ -612,7 +644,7 @@ function rg(){
   <div class="kpi-row">
     <div class="kpi-card c-primary"><div class="kpi-label">架電数</div><div class="kpi-value">${ts.calls.toLocaleString()}</div><div class="kpi-meta">${ts.memberCount}名合計</div></div>
     <div class="kpi-card c-blue"><div class="kpi-label">接続数</div><div class="kpi-value">${ts.contacts}</div><div class="kpi-meta">社長 ${ts.ceoC} / 責任者 ${ts.mgrC}</div></div>
-    <div class="kpi-card c-teal"><div class="kpi-label">アポ獲得数</div><div class="kpi-value">${ts.apos}</div><div class="kpi-meta">社長 ${ts.ceoA} / 責任者 ${ts.mgrA}</div></div>
+    <div class="kpi-card c-teal"><div class="kpi-label">アポ獲得数</div><div class="kpi-value">${ts.apos}</div><div class="kpi-meta">社長 ${ts.ceoA} / 責任者 ${ts.mgrA}${apoTargetBadge(ts.apos,ts.teamApoTarget)}</div></div>
     <div class="kpi-card c-amber"><div class="kpi-label">全体接触率</div><div class="kpi-value">${ts.contactRate.toFixed(1)}<span style="font-size:15px">%</span></div><div class="kpi-meta">接続 ÷ 架電</div></div>
     <div class="kpi-card c-primary"><div class="kpi-label">Call→アポ率</div><div class="kpi-value">${ts.callApoRate.toFixed(2)}<span style="font-size:15px">%</span></div><div class="kpi-meta">アポ ÷ 架電</div></div>
     <div class="kpi-card c-gray"><div class="kpi-label">稼働時間</div><div class="kpi-value">${ts.hours}<span style="font-size:15px">h</span></div><div class="kpi-meta">${ts.days}稼働日（延べ）</div></div>
@@ -634,7 +666,7 @@ function rg(){
     </tr>`).join('')}</tbody>
   </table></div>`;
 }
-
+ 
 // ── COMPARE ──────────────────────────────────────────────
 function rc(){
   const ms=Object.keys(state.members),as=ms.map(m=>({name:m,...ss(gfr(m))}));
@@ -668,19 +700,19 @@ function rc(){
     }).join('')}</tbody>
   </table></div>`;
 }
-
+ 
 // ── HELPERS ──────────────────────────────────────────────
 function sm(n){state.activeMember=n;renderDashboard();}
 function setTeamTab(tid){state.activeTeamTab=tid;renderDashboard();}
-
+ 
 // ── TEAM EDITOR ──────────────────────────────────────────
-let editorState={teams:{},memberTeam:{}};// working copy
+let editorState={teams:{},memberTeam:{},memberApoTarget:{}};// working copy
 let dragMember=null;
-
+ 
 function openEditor(){
-  // deep copy
   editorState.teams=JSON.parse(JSON.stringify(state.teams));
   editorState.memberTeam=JSON.parse(JSON.stringify(state.memberTeam));
+  editorState.memberApoTarget=JSON.parse(JSON.stringify(state.memberApoTarget));
   renderEditor();
   document.getElementById('editorOverlay').style.display='flex';
 }
@@ -688,17 +720,20 @@ function closeEditor(){document.getElementById('editorOverlay').style.display='n
 function applyTeams(){
   state.teams=JSON.parse(JSON.stringify(editorState.teams));
   state.memberTeam=JSON.parse(JSON.stringify(editorState.memberTeam));
+  state.memberApoTarget=JSON.parse(JSON.stringify(editorState.memberApoTarget));
+  // 新規メンバー（フォームから追加された未登録者）をmemberTeamに追加
+  Object.keys(state.members).forEach(m=>{if(state.memberTeam[m]===undefined) state.memberTeam[m]=null;});
   updateTeamSummary();
   closeEditor();
   renderDashboard();
 }
-
+ 
 function renderEditor(){
   // unassigned
   const pool=document.getElementById('unassignedPool');
   pool.innerHTML='';
   Object.keys(state.members).filter(m=>!editorState.memberTeam[m]).forEach(m=>{pool.appendChild(makeChip(m,null));});
-
+ 
   // teams
   const teTeams=document.getElementById('teTeams');
   teTeams.innerHTML='';
@@ -725,7 +760,8 @@ function makeChip(name,tid){
   const color=tid&&editorState.teams[tid]?editorState.teams[tid].color:'#888';
   const chip=document.createElement('div');
   chip.className='m-chip';chip.draggable=true;chip.dataset.member=name;
-  chip.innerHTML=`<span class="m-chip-avatar" style="background:${color}22;color:${color}">${memberInitial(name)}</span>${name}`;
+  const tgt=editorState.memberApoTarget[name]!==undefined?editorState.memberApoTarget[name]:'';
+  chip.innerHTML=`<span class="m-chip-avatar" style="background:${color}22;color:${color}">${memberInitial(name)}</span>${name}<input type="number" class="tgt-input" value="${tgt}" min="0" step="0.5" placeholder="目標" title="月次アポ目標" onclick="event.stopPropagation()" oninput="editorState.memberApoTarget['${name}']=parseFloat(this.value)||0">`;
   chip.addEventListener('dragstart',e=>{dragMember=name;chip.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
   chip.addEventListener('dragend',()=>{dragMember=null;chip.classList.remove('dragging');});
   return chip;
@@ -750,10 +786,11 @@ function deleteTeam(tid){
   delete editorState.teams[tid];
   renderEditor();
 }
-
+ 
 // ── AUTO FETCH ON LOAD ───────────────────────────────────
 // ページ読み込み時に自動でデータ取得を試みる
 window.addEventListener('load',()=>{fetchSheetData();});
 </script>
 </body>
 </html>
+ 
