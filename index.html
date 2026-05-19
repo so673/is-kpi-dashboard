@@ -294,7 +294,7 @@ const TEAM_COLORS=['#40b680','#0080EE','#FFAA00','#e05050','#9b59b6','#e67e22','
  
 // ── GOOGLE SHEETS CONFIG ─────────────────────────────────
 // GASプロキシ経由でCORSを回避
-const CSV_URL='https://script.google.com/macros/s/AKfycbzr5q6luEV1iLaHmQBfg35eP3xqRqQuSYJfkqqndEFMnNywtdtWBe6_BcYOaXLfes50/exec';
+const CSV_URL='https://script.google.com/macros/s/AKfycbwnuX-vL69yzIU-vYcQCZufYp5Ey07skCn-YlTrb87ORsGXeGcgFdgZo-TZkoT1m1gk/exec';
  
 // ── FETCH FROM SHEETS ─────────────────────────────────────
 async function fetchSheetData(){
@@ -642,6 +642,8 @@ function rt(){
   const tot={calls:0,hours:0,ceoC:0,mgrC:0,ceoA:0,mgrA:0,contacts:0,apos:0,days:0};
   as.forEach(s=>{tot.calls+=s.calls;tot.hours+=s.hours;tot.ceoC+=s.ceoC;tot.mgrC+=s.mgrC;tot.ceoA+=s.ceoA;tot.mgrA+=s.mgrA;tot.contacts+=s.contacts;tot.apos+=s.apos;tot.days+=s.days});
   tot.contactRate=tot.calls>0?(tot.contacts/tot.calls*100):0;tot.callApoRate=tot.calls>0?(tot.apos/tot.calls*100):0;tot.callsPerHour=tot.hours>0?(tot.calls/tot.hours):0;
+  tot.callsPerDay=tot.days>0?(tot.calls/tot.days):0;
+  tot.aposPerDay=tot.days>0?(tot.apos/tot.days):0;
   const bm={};ms.forEach(m=>{agg(gfr(m)).forEach(b=>{if(!bm[b.key]) bm[b.key]={label:b.label,calls:0,apos:0};bm[b.key].calls+=b.calls;bm[b.key].apos+=b.apos;});});
   const tb=Object.entries(bm).sort((a,b)=>a[0]<b[0]?-1:1).map(([,v])=>v);
   const mx=Math.max(...as.map(s=>s.calls),1);
