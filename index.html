@@ -366,9 +366,10 @@ function parseFormCSV(text){
     const r=rows[i];
     if(r.length<3) continue;
     const rawDate=(r[iDate]||'').trim();
-    const name=(r[iName]||'').trim();
-    if(!rawDate||!name) continue;
+    const rawName=(r[iName]||'').trim();
+    if(!rawDate||!rawName) continue;
     const date=parseDate(rawDate);if(!date) continue;
+    const name=normalizeName(rawName);
     const calls=pn(r[iCalls]),hours=parseHours(r[iHours]);
     if(calls===0&&hours===0) continue;
     if(!memberMap[name]) memberMap[name]=[];
@@ -380,6 +381,19 @@ function parseFormCSV(text){
   }
   Object.values(memberMap).forEach(arr=>arr.sort((a,b)=>a.date-b.date));
   return memberMap;
+}
+ 
+// フルネーム → 登録済み名字に正規化（前方一致）
+function normalizeName(fullName){
+  const registered=[
+    ...Object.keys(state.memberTeam),
+    ...Object.keys(state.memberApoTarget),
+  ];
+  // 完全一致優先
+  if(registered.includes(fullName)) return fullName;
+  // 前方一致（登録名が入力名の先頭に含まれる）
+  const match=registered.find(r=>fullName.startsWith(r)||r.startsWith(fullName));
+  return match||fullName;
 }
  
 // 改行含みクォートフィールドを正しく処理するCSVトークナイザー
