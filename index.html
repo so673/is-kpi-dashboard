@@ -338,29 +338,34 @@ async function fetchSheetData(){
 }
  
 // ── FORM RESPONSE CSV PARSER ──────────────────────────────
-// 列: タイムスタンプ, 報告日, 報告者名, テレアポ稼働時間,
-//     テレアポ以外の稼働時間, テレアポ以外の活動内容,
-//     総架電数(Call数), 【責任者】接触数, 【社長】接触数,
-//     【責任者】アポ数, 【社長】アポ数,
-//     パス数, 【責任者】パスアポ数, 【社長】パスアポ数, 特記事項
 function parseFormCSV(text){
-  const lines=text.split('\n');
-  if(lines.length<2) return {};
-  const header=parseCSVLine(lines[0]);
-  // column index map
+  // 改行含みクォートフィールドを正しく処理するトークナイザー
+  const rows=tokenizeCSV(text);
+  if(rows.length<2) return {};
+ 
+  // ヘッダー行を探す（「報告日」を含む行）
+  let headerRowIdx=-1;
+  for(let i=0;i<rows.length;i++){
+    if(rows[i].some(c=>c.includes('報告日'))){headerRowIdx=i;break;}
+  }
+  if(headerRowIdx<0) return {};
+  const header=rows[headerRowIdx];
+ 
+  // 列インデックス特定
   const iDate=header.findIndex(h=>h.includes('報告日'));
   const iName=header.findIndex(h=>h.includes('報告者名'));
-  const iHours=header.findIndex(h=>h.includes('テレアポ稼働時間'));
+  const iHours=header.findIndex(h=>h.includes('テレアポ稼働時間')&&!h.includes('以外'));
   const iCalls=header.findIndex(h=>h.includes('総架電数')||h.includes('Call数'));
   const iMgrC=header.findIndex(h=>h.includes('責任者')&&h.includes('接触'));
   const iCeoC=header.findIndex(h=>h.includes('社長')&&h.includes('接触'));
-  const iMgrA=header.findIndex(h=>h.includes('責任者')&&h.includes('アポ'));
-  const iCeoA=header.findIndex(h=>h.includes('社長')&&h.includes('アポ'));
+  const iMgrA=header.findIndex(h=>h.includes('責任者')&&h.includes('アポ')&&!h.includes('パス'));
+  const iCeoA=header.findIndex(h=>h.includes('社長')&&h.includes('アポ')&&!h.includes('パス'));
+ 
   const memberMap={};
-  for(let i=1;i<lines.length;i++){
-    const r=parseCSVLine(lines[i]);
+  for(let i=headerRowIdx+1;i<rows.length;i++){
+    const r=rows[i];
     if(r.length<3) continue;
-    const rawDate=r[iDate]||'';
+    const rawDate=(r[iDate]||'').trim();
     const name=(r[iName]||'').trim();
     if(!rawDate||!name) continue;
     const date=parseDate(rawDate);if(!date) continue;
@@ -373,9 +378,31 @@ function parseFormCSV(text){
       mgrApos:pn(r[iMgrA]),ceoApos:pn(r[iCeoA]),
     });
   }
-  // sort each member's records by date
   Object.values(memberMap).forEach(arr=>arr.sort((a,b)=>a.date-b.date));
   return memberMap;
+}
+ 
+// 改行含みクォートフィールドを正しく処理するCSVトークナイザー
+function tokenizeCSV(text){
+  const rows=[];let row=[];let cur='';let inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(c==='"'){
+      if(inQ&&text[i+1]==='"'){cur+='"';i++;}
+      else inQ=!inQ;
+    } else if(c===','&&!inQ){
+      row.push(cur.trim());cur='';
+    } else if((c==='\n'||c==='\r')&&!inQ){
+      if(c==='\r'&&text[i+1]==='\n') i++;
+      row.push(cur.trim());
+      if(row.some(v=>v!=='')) rows.push(row);
+      row=[];cur='';
+    } else {
+      cur+=c;
+    }
+  }
+  if(cur||row.length) {row.push(cur.trim());if(row.some(v=>v!=='')) rows.push(row);}
+  return rows;
 }
  
 function parseCSVLine(line){const res=[];let cur='';let q=false;for(const c of line){if(c==='"'){q=!q;}else if(c===','&&!q){res.push(cur.trim());cur='';}else cur+=c;}res.push(cur.trim());return res;}
