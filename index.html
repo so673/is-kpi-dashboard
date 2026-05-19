@@ -489,9 +489,18 @@ document.querySelectorAll('#quickRangePills .pill').forEach(b=>b.addEventListene
  
 // ── DATA ─────────────────────────────────────────────────
 function gfr(m){
-  const from=new Date(document.getElementById('dateFrom').value||'2000-01-01');
-  const to=new Date(document.getElementById('dateTo').value||'2099-12-31');to.setHours(23,59,59);
+  const fromStr=document.getElementById('dateFrom').value;
+  const toStr=document.getElementById('dateTo').value;
+  // new Date('YYYY-MM-DD')はUTC基準になるためローカル基準で生成
+  const from=fromStr?localDate(fromStr):new Date(2000,0,1);
+  const to=toStr?localDate(toStr):new Date(2099,11,31);
+  to.setHours(23,59,59);
   return(state.members[m]||[]).filter(r=>r.date>=from&&r.date<=to);
+}
+// 'YYYY-MM-DD'文字列をローカルタイムのDateに変換
+function localDate(s){
+  const p=s.split('-');
+  return new Date(+p[0],+p[1]-1,+p[2]);
 }
 function agg(records){
   const bk={};
