@@ -380,10 +380,11 @@ function parseFormCSV(text){
  
 function parseCSVLine(line){const res=[];let cur='';let q=false;for(const c of line){if(c==='"'){q=!q;}else if(c===','&&!q){res.push(cur.trim());cur='';}else cur+=c;}res.push(cur.trim());return res;}
 function parseDate(s){
+  if(!s) return null;
   s=s.trim();
   // 通常形式: "2026/05/01" or "2026-05-01" or "2026年5月1日"
-  const s2=s.replace(/\//g,'-').replace(/年/g,'-').replace(/月/g,'-').replace(/日/g,'');
-  const m=s2.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  const s2=s.replace(/\//g,'-').replace(/年/g,'-').replace(/月/g,'-').replace(/日/g,'').trim();
+  const m=s2.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if(m) return new Date(+m[1],+m[2]-1,+m[3]);
   // GAS形式: "Fri May 01 2026 00:00:00 GMT+0900（日本標準時）"
   const d=new Date(s);
@@ -391,18 +392,29 @@ function parseDate(s){
   return null;
 }
 function parseHours(s){
-  // GAS時間型: "Sat Dec 30 1899 05:37:40 GMT+0900（日本標準時）" → 時間数を抽出
-  if(!s) return 0;
-  const gasMatch=String(s).match(/\d{4}\s+(\d{1,2}):(\d{2}):(\d{2})/);
-  if(gasMatch) return +gasMatch[1]+(+gasMatch[2])/60+(+gasMatch[3])/3600;
-  // HH:MM:SS 形式: "5:00:00"
-  const hmsMatch=String(s).match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-  if(hmsMatch) return +hmsMatch[1]+(+hmsMatch[2])/60+((+hmsMatch[3]||0))/3600;
-  // 数値そのまま
-  const n=parseFloat(String(s).replace(/[,%¥$時間hｈ]/g,''));
+  if(!s||s==='0'||s==='') return 0;
+  const str=String(s).trim();
+  // HH:MM:SS 形式: "5:00:00" or "5:30:00"
+  const hms=str.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+  if(hms) return +hms[1]+(+hms[2])/60+(+hms[3])/3600;
+  // HH:MM 形式: "5:00"
+  const hm=str.match(/^(\d{1,2}):(\d{2})$/);
+  if(hm) return +hm[1]+(+hm[2])/60;
+  // GAS時間型: "Sat Dec 30 1899 05:37:40 GMT+0900（日本標準時）"
+  const gasM=str.match(/1899\s+(\d{1,2}):(\d{2}):(\d{2})/);
+  if(gasM) return +gasM[1]+(+gasM[2])/60+(+gasM[3])/3600;
+  // 数値そのまま "5" or "5.5"
+  const n=parseFloat(str.replace(/[時間hｈ]/g,''));
   return isNaN(n)?0:n;
 }
-function pn(s){if(!s) return 0;const n=parseFloat(String(s).replace(/[,%¥$時間hｈ]/g,''));return isNaN(n)?0:n;}
+function pn(s){
+  if(!s) return 0;
+  const str=String(s).trim();
+  // "なし" や文字列は0
+  if(!/[\d.]/.test(str)) return 0;
+  const n=parseFloat(str.replace(/[,%¥$時間hｈ]/g,''));
+  return isNaN(n)?0:n;
+}
 function fdi(d){return d.toISOString().slice(0,10);}
 function fd(d){return`${d.getMonth()+1}/${d.getDate()}`;}
 function fw(d){const s=new Date(d);s.setDate(s.getDate()-s.getDay()+1);return`${s.getMonth()+1}/${s.getDate()}週`;}
@@ -537,14 +549,14 @@ function ri(){
   </div>
   <div class="member-tabs">${tabs}</div>
   <div class="kpi-row">
-    <div class="kpi-card c-primary"><div class="kpi-label">架電数</div><div class="kpi-value">${s.calls.toLocaleString()}</div><div class="kpi-meta">稼働 ${s.hours}h / ${s.days}日</div></div>
+    <div class="kpi-card c-primary"><div class="kpi-label">架電数</div><div class="kpi-value">${s.calls.toLocaleString()}</div><div class="kpi-meta">稼働 ${s.hours.toFixed(2)}h / ${s.days}日</div></div>
     <div class="kpi-card c-blue"><div class="kpi-label">接続数</div><div class="kpi-value">${s.contacts}</div><div class="kpi-meta">社長 ${s.ceoC} / 責任者 ${s.mgrC}</div></div>
     <div class="kpi-card c-teal"><div class="kpi-label">アポ獲得数</div><div class="kpi-value">${s.apos}</div><div class="kpi-meta">社長 ${s.ceoA} / 責任者 ${s.mgrA}${apoTargetBadge(s.apos,state.memberApoTarget[state.activeMember])}</div></div>
     <div class="kpi-card c-amber"><div class="kpi-label">架電数 / h</div><div class="kpi-value">${s.callsPerHour.toFixed(1)}</div><div class="kpi-meta"><span class="${s.callsPerHour>=20?'ok':s.callsPerHour>=15?'warn':'bad'}">目標 20件/h</span></div></div>
     <div class="kpi-card c-primary"><div class="kpi-label">全体接触率</div><div class="kpi-value">${s.contactRate.toFixed(1)}<span style="font-size:15px">%</span></div><div class="kpi-meta">接続 ÷ 架電</div></div>
     <div class="kpi-card c-blue"><div class="kpi-label">Call → アポ率</div><div class="kpi-value">${s.callApoRate.toFixed(2)}<span style="font-size:15px">%</span></div><div class="kpi-meta">アポ ÷ 架電</div></div>
     <div class="kpi-card c-teal"><div class="kpi-label">接触 → アポ率</div><div class="kpi-value">${s.contactApoRate.toFixed(1)}<span style="font-size:15px">%</span></div><div class="kpi-meta">アポ ÷ 接続</div></div>
-    <div class="kpi-card c-gray"><div class="kpi-label">総稼働時間</div><div class="kpi-value">${s.hours}<span style="font-size:15px">h</span></div><div class="kpi-meta">${s.days} 稼働日</div></div>
+    <div class="kpi-card c-gray"><div class="kpi-label">総稼働時間</div><div class="kpi-value">${s.hours.toFixed(2)}<span style="font-size:15px">h</span></div><div class="kpi-meta">${s.days} 稼働日</div></div>
     <div class="kpi-card c-primary"><div class="kpi-label">架電数 / 稼働日</div><div class="kpi-value">${s.callsPerDay.toFixed(1)}</div><div class="kpi-meta">稼働日あたり正規化</div></div>
     <div class="kpi-card c-teal"><div class="kpi-label">アポ数 / 稼働日</div><div class="kpi-value">${s.aposPerDay.toFixed(2)}</div><div class="kpi-meta">稼働日あたり正規化</div></div>
   </div>
@@ -558,8 +570,8 @@ function ri(){
   <div class="tbl-wrap"><table>
     <thead><tr><th>日付</th><th>稼働(h)</th><th>架電数</th><th>社長接続</th><th>責任者接続</th><th>社長アポ</th><th>責任者アポ</th><th>接触率</th><th>Call→アポ率</th><th>架電/h</th><th>架電/稼働日</th></tr></thead>
     <tbody>
-      ${bk.map(b=>`<tr><td style="font-weight:700;color:var(--text)">${b.label}</td><td>${b.hours}</td><td>${b.calls.toLocaleString()}</td><td>${b.ceoC}</td><td>${b.mgrC}</td><td>${b.ceoA}</td><td>${b.mgrA}</td><td><span class="${b.contactRate>=8?'ok':b.contactRate>=5?'warn':'bad'}">${b.contactRate.toFixed(1)}%</span></td><td>${b.callApoRate.toFixed(2)}%</td><td><span class="${b.callsPerHour>=20?'ok':b.callsPerHour>=15?'warn':'bad'}">${b.callsPerHour.toFixed(1)}</span></td><td>${b.days>0?(b.calls/b.days).toFixed(1):'―'}</td></tr>`).join('')}
-      <tr class="total-row"><td>合計</td><td>${s.hours}</td><td>${s.calls.toLocaleString()}</td><td>${s.ceoC}</td><td>${s.mgrC}</td><td>${s.ceoA}</td><td>${s.mgrA}</td><td>${s.contactRate.toFixed(1)}%</td><td>${s.callApoRate.toFixed(2)}%</td><td>${s.callsPerHour.toFixed(1)}</td><td>${s.callsPerDay.toFixed(1)}</td></tr>
+      ${bk.map(b=>`<tr><td style="font-weight:700;color:var(--text)">${b.label}</td><td>${b.hours.toFixed(2)}</td><td>${b.calls.toLocaleString()}</td><td>${b.ceoC}</td><td>${b.mgrC}</td><td>${b.ceoA}</td><td>${b.mgrA}</td><td><span class="${b.contactRate>=8?'ok':b.contactRate>=5?'warn':'bad'}">${b.contactRate.toFixed(1)}%</span></td><td>${b.callApoRate.toFixed(2)}%</td><td><span class="${b.callsPerHour>=20?'ok':b.callsPerHour>=15?'warn':'bad'}">${b.callsPerHour.toFixed(1)}</span></td><td>${b.days>0?(b.calls/b.days).toFixed(1):'―'}</td></tr>`).join('')}
+      <tr class="total-row"><td>合計</td><td>${s.hours.toFixed(2)}</td><td>${s.calls.toLocaleString()}</td><td>${s.ceoC}</td><td>${s.mgrC}</td><td>${s.ceoA}</td><td>${s.mgrA}</td><td>${s.contactRate.toFixed(1)}%</td><td>${s.callApoRate.toFixed(2)}%</td><td>${s.callsPerHour.toFixed(1)}</td><td>${s.callsPerDay.toFixed(1)}</td></tr>
     </tbody>
   </table></div>`;
   mc('c1',{data:{labels:lb,datasets:[{type:'bar',data:bk.map(b=>b.calls),backgroundColor:'rgba(64,182,128,0.55)',borderRadius:4,yAxisID:'y',order:2},{type:'line',data:bk.map(b=>b.apos),borderColor:'#0080EE',backgroundColor:'#0080EE',pointBackgroundColor:'#0080EE',borderWidth:2.5,pointRadius:5,tension:.3,yAxisID:'y2',order:1}]},options:{...JSON.parse(JSON.stringify(BO)),scales:{...SC,y2:{position:'right',ticks:{color:'#0080EE',font:{family:'Meiryo,sans-serif',size:10}},grid:{drawOnChartArea:false},border:{display:false},min:0}}}});
@@ -588,7 +600,7 @@ function rt(){
     <div class="kpi-card c-teal"><div class="kpi-label">アポ獲得（合計）</div><div class="kpi-value">${tot.apos}</div><div class="kpi-meta">社長 ${tot.ceoA} / 責任者 ${tot.mgrA}</div></div>
     <div class="kpi-card c-amber"><div class="kpi-label">全体接触率</div><div class="kpi-value">${tot.contactRate.toFixed(1)}<span style="font-size:15px">%</span></div><div class="kpi-meta">接続 ÷ 架電</div></div>
     <div class="kpi-card c-primary"><div class="kpi-label">全体Call→アポ率</div><div class="kpi-value">${tot.callApoRate.toFixed(2)}<span style="font-size:15px">%</span></div><div class="kpi-meta">アポ ÷ 架電</div></div>
-    <div class="kpi-card c-gray"><div class="kpi-label">総稼働時間</div><div class="kpi-value">${tot.hours}<span style="font-size:15px">h</span></div><div class="kpi-meta">${tot.days}稼働日（延べ）</div></div>
+    <div class="kpi-card c-gray"><div class="kpi-label">総稼働時間</div><div class="kpi-value">${tot.hours.toFixed(2)}<span style="font-size:15px">h</span></div><div class="kpi-meta">${tot.days}稼働日（延べ）</div></div>
     <div class="kpi-card c-primary"><div class="kpi-label">架電数 / 稼働日</div><div class="kpi-value">${tot.callsPerDay.toFixed(1)}</div><div class="kpi-meta">チーム平均・正規化</div></div>
     <div class="kpi-card c-teal"><div class="kpi-label">アポ数 / 稼働日</div><div class="kpi-value">${tot.aposPerDay.toFixed(2)}</div><div class="kpi-meta">チーム平均・正規化</div></div>
   </div>
@@ -663,7 +675,7 @@ function rg(){
     <div class="kpi-card c-teal"><div class="kpi-label">アポ獲得数</div><div class="kpi-value">${ts.apos}</div><div class="kpi-meta">社長 ${ts.ceoA} / 責任者 ${ts.mgrA}${apoTargetBadge(ts.apos,ts.teamApoTarget)}</div></div>
     <div class="kpi-card c-amber"><div class="kpi-label">全体接触率</div><div class="kpi-value">${ts.contactRate.toFixed(1)}<span style="font-size:15px">%</span></div><div class="kpi-meta">接続 ÷ 架電</div></div>
     <div class="kpi-card c-primary"><div class="kpi-label">Call→アポ率</div><div class="kpi-value">${ts.callApoRate.toFixed(2)}<span style="font-size:15px">%</span></div><div class="kpi-meta">アポ ÷ 架電</div></div>
-    <div class="kpi-card c-gray"><div class="kpi-label">稼働時間</div><div class="kpi-value">${ts.hours}<span style="font-size:15px">h</span></div><div class="kpi-meta">${ts.days}稼働日（延べ）</div></div>
+    <div class="kpi-card c-gray"><div class="kpi-label">稼働時間</div><div class="kpi-value">${ts.hours.toFixed(2)}<span style="font-size:15px">h</span></div><div class="kpi-meta">${ts.days}稼働日（延べ）</div></div>
     <div class="kpi-card c-primary"><div class="kpi-label">架電数 / 稼働日</div><div class="kpi-value">${ts.callsPerDay.toFixed(1)}</div><div class="kpi-meta">稼働日あたり正規化</div></div>
     <div class="kpi-card c-teal"><div class="kpi-label">アポ数 / 稼働日</div><div class="kpi-value">${ts.aposPerDay.toFixed(2)}</div><div class="kpi-meta">稼働日あたり正規化</div></div>
   </div>
