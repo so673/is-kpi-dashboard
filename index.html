@@ -294,7 +294,7 @@ const TEAM_COLORS=['#40b680','#0080EE','#FFAA00','#e05050','#9b59b6','#e67e22','
  
 // ── GOOGLE SHEETS CONFIG ─────────────────────────────────
 // GASプロキシ経由でCORSを回避
-const CSV_URL='https://script.google.com/macros/s/AKfycbyrdlmQAPfnkGJv_aAMIYi1T8sHFCFPcSDcFSlbwtqWvq3Q-96WAJ-WEvJtH4t3IzWC/exec';
+const CSV_URL='https://script.google.com/macros/s/AKfycbx8qmw5BdgEcTSvR-xTl4Ipf9CQKZenRQFeQfiTE_e3QGvw7nNGB5fGKUcqnwUpfibb/exec';
  
 // ── FETCH FROM SHEETS ─────────────────────────────────────
 async function fetchSheetData(){
@@ -435,9 +435,6 @@ function parseDate(s){
 function parseHours(s){
   if(!s||s===''||s==='0') return 0;
   const str=String(s).trim();
-  // GAS新形式: "5.00" など小数文字列
-  const num=parseFloat(str);
-  if(!isNaN(num)&&!/[:]/.test(str)) return num;
   // HH:MM:SS 形式: "5:00:00"
   const hms=str.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
   if(hms) return +hms[1]+(+hms[2])/60+(+hms[3])/3600;
@@ -447,6 +444,16 @@ function parseHours(s){
   // GAS旧時間型: "Sat Dec 30 1899 05:37:40 GMT+0900..."
   const gasM=str.match(/1899\s+(\d{1,2}):(\d{2}):(\d{2})/);
   if(gasM) return +gasM[1]+(+gasM[2])/60+(+gasM[3])/3600;
+  // 小数形式: "5.63" → GASがExcelシリアル値を変換した値
+  // 小数部は分/60ではなくExcelの時刻シリアル（1=24h）なので
+  // 5.63 = 5時間 + 0.63h = 5時間37.8分 → 正しい変換
+  const num=parseFloat(str);
+  if(!isNaN(num)){
+    const h=Math.floor(num);
+    const minDecimal=num-h; // 0.63など
+    // 0.63 * 60 = 37.8分 → これがExcelの時刻小数
+    return h + minDecimal;  // そのまま時間として使用（0.63h≒38分）
+  }
   return 0;
 }
 function pn(s){
