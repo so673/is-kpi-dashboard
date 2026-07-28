@@ -353,7 +353,7 @@ function parseFormCSV(text){
  
   // 列インデックス特定
   const iDate=header.findIndex(h=>h.includes('報告日'));
-  const iName=header.findIndex(h=>h.includes('報告者名'));
+  const iNames=header.map((h,idx)=>h.includes('報告者名')?idx:-1).filter(i=>i>=0);
   const iHours=header.findIndex(h=>h.includes('テレアポ稼働時間')&&!h.includes('以外'));
   const iCalls=header.findIndex(h=>h.includes('総架電数')||h.includes('Call数'));
   const iMgrC=header.findIndex(h=>h.includes('責任者')&&h.includes('接触'));
@@ -366,7 +366,7 @@ function parseFormCSV(text){
     const r=rows[i];
     if(r.length<3) continue;
     const rawDate=(r[iDate]||'').trim();
-    const rawName=(r[iName]||'').trim();
+    const rawName=(iNames.map(i=>(r[i]||'').trim()).find(v=>v))||'';
     if(!rawDate||!rawName) continue;
     const date=parseDate(rawDate);if(!date) continue;
     const name=normalizeName(rawName);
