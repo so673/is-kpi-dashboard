@@ -346,15 +346,15 @@ function parseFormCSV(text){
   // ヘッダー行を探す（「報告日」を含む行）
   let headerRowIdx=-1;
   for(let i=0;i<rows.length;i++){
-    if(rows[i].some(c=>c.includes('報告日'))){headerRowIdx=i;break;}
+    if(rows[i].some(c=>c.includes('報告日')||c.includes('活動日'))){headerRowIdx=i;break;}
   }
   if(headerRowIdx<0) return {};
   const header=rows[headerRowIdx];
  
   // 列インデックス特定
-  const iDate=header.findIndex(h=>h.includes('報告日'));
-  const iNames=header.map((h,idx)=>h.includes('報告者名')?idx:-1).filter(i=>i>=0);
-  const iHours=header.findIndex(h=>h.includes('テレアポ稼働時間')&&!h.includes('以外'));
+  const iDate=header.findIndex(h=>h.includes('報告日')||h.includes('活動日'));
+  const iNames=header.map((h,idx)=>(h.includes('報告者名')||h.includes('名前'))?idx:-1).filter(i=>i>=0);
+  const iHours=header.findIndex(h=>h.includes('稼働時間')&&!h.includes('以外')&&!h.includes('内訳')&&!h.includes('活動内容'));
   const iCalls=header.findIndex(h=>h.includes('総架電数')||h.includes('Call数'));
   const iMgrC=header.findIndex(h=>h.includes('責任者')&&h.includes('接触'));
   const iCeoC=header.findIndex(h=>h.includes('社長')&&h.includes('接触'));
